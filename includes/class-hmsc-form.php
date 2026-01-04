@@ -133,11 +133,9 @@ class HMSC_Form {
         }
 
         $settings = HMSC_Settings::get();
-        if (empty($settings['hub_url']) || empty($settings['site_id']) || empty($settings['api_key'])) {
+        if (empty($settings['hub_url'])) {
             self::redirect_error('Hub ayarları eksik. Lütfen önce Ayarlar bölümünü yapılandırın.');
         }
-
-        $endpoint = rtrim($settings['hub_url'], '/') . '/wp-json/hmsh/v1/tickets';
 
         $user = wp_get_current_user();
 
@@ -156,34 +154,15 @@ class HMSC_Form {
             'submitted_by_email' => $user ? $user->user_email : '',
         );
 
-        $args = array(
-            'timeout' => 15,
-            'headers' => array(
-                'Content-Type' => 'application/json; charset=utf-8',
-                'X-HM-Site'    => $settings['site_id'],
-                'X-HM-Key'     => $settings['api_key'],
-            ),
-            'body' => wp_json_encode($payload),
-        );
-
-        $res = wp_remote_post($endpoint, $args);
-
-        if (is_wp_error($res)) {
-            self::redirect_error('Hub’a ulaşılamadı: ' . $res->get_error_message());
+        // provision eksikse anında dene (shared key varsa)
+        if ((empty($settings['site_id']) || empty($settings['api_key'])) && !empty($settings['hub_url']) && !empty($settings['shared_api_key'])) {
+            HMSC_Hub::maybe_provision(true);
+            $settings = HMSC_Settings::get();
         }
 
-        $code = (int) wp_remote_retrieve_response_code($res);
-        $body = wp_remote_retrieve_body($res);
-
-        if ($code < 200 || $code >= 300) {
-            $msg = 'Hub isteği reddetti.';
-            if (!empty($body)) {
-                $decoded = json_decode($body, true);
-                if (is_array($decoded) && !empty($decoded['message'])) {
-                    $msg .= ' ' . sanitize_text_field($decoded['message']);
-                }
-            }
-            self::redirect_error($msg);
+        $res = HMSC_Hub::send_ticket($payload);
+        if (is_wp_error($res)) {
+            self::redirect_error($res->get_error_message());
         }
 
         wp_safe_redirect(add_query_arg(array('page' => 'hm-support', 'hmsc_sent' => '1'), admin_url('admin.php')));
