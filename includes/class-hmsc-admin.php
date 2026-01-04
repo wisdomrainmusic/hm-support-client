@@ -129,12 +129,12 @@ class HMSC_Admin {
                 </div>
 
                 <div class="hmsc-card">
-                    <h2>Hub Bağlantısını Yenile</h2>
-                    <p>Site kimliği ve API anahtarı Hub tarafından atanır. Yeniden bağlanmak için aşağıdaki butonu kullanın.</p>
+                    <h2>Kayıt Sıfırla</h2>
+                    <p>Site kimliği ve API anahtarı Hub tarafından atanır. Bu buton mevcut kaydı temizler ve admin paneline tekrar girdiğinizde yeni bir site kimliği alınmasını sağlar.</p>
                     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                         <input type="hidden" name="action" value="hmsc_reprovision" />
                         <?php wp_nonce_field('hmsc_reprovision'); ?>
-                        <p><button class="button button-secondary">Yeniden Bağlan (Hub’a Tekrar Kayıt)</button></p>
+                        <p><button class="button button-secondary">Kayıt Sıfırla (Yeni Site Kimliği Al)</button></p>
                     </form>
                 </div>
             </form>
@@ -156,16 +156,7 @@ class HMSC_Admin {
             'last_error'     => '',
         ));
 
-        HMSC_Hub::maybe_provision(true);
-
-        $updated = HMSC_Settings::get();
-        if (HMSC_Settings::is_provisioned()) {
-            add_settings_error('hmsc_messages', 'hmsc_reprovision_success', 'Hub ile bağlantı yenilendi.', 'updated');
-        } elseif (!empty($updated['last_error'])) {
-            add_settings_error('hmsc_messages', 'hmsc_reprovision_failed', 'Yeniden bağlanılamadı: ' . esc_html($updated['last_error']));
-        } else {
-            add_settings_error('hmsc_messages', 'hmsc_reprovision_pending', 'Yeniden bağlanma denemesi yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.', 'info');
-        }
+        add_settings_error('hmsc_messages', 'hmsc_reprovision_reset', 'Kayıt bilgileri temizlendi. Admin paneli yeniden açıldığında yeni site kimliği alınacaktır.', 'info');
 
         // hataları bir sonraki sayfaya taşı
         set_transient('settings_errors', get_settings_errors('hmsc_messages'), 30);
