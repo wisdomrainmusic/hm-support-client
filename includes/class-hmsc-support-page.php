@@ -1,22 +1,20 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class HMSC_Form {
+class HMSC_Support_Page {
+    const ACTION_SUBMIT = 'hmsc_submit_ticket';
+    const ACTION_TEST   = 'hmsc_test_connection';
     const CAP = 'manage_woocommerce';
 
-    // WhatsApp line
-    const WHATSAPP_LINK = 'https://wa.me/905309138778';
-
-    // Admin-post action
-    const ACTION = 'hmsc_submit_ticket';
-
     public static function init() {
-        add_action('admin_post_' . self::ACTION, array(__CLASS__, 'handle_submit'));
+        add_action('admin_post_' . self::ACTION_SUBMIT, array(__CLASS__, 'handle_submit'));
+        add_action('admin_post_' . self::ACTION_TEST, array(__CLASS__, 'handle_test'));
     }
 
     public static function render() {
         $success = isset($_GET['hmsc_sent']) && $_GET['hmsc_sent'] === '1';
         $error   = isset($_GET['hmsc_error']) ? sanitize_text_field($_GET['hmsc_error']) : '';
+        $status  = isset($_GET['hmsc_status']) ? sanitize_text_field($_GET['hmsc_status']) : '';
 
         $current_user = wp_get_current_user();
         $default_email = $current_user && !empty($current_user->user_email) ? $current_user->user_email : '';
@@ -33,12 +31,16 @@ class HMSC_Form {
                 <div class="notice notice-error is-dismissible"><p><?php echo esc_html($error); ?></p></div>
             <?php endif; ?>
 
+            <?php if (!empty($status)): ?>
+                <div class="notice notice-info is-dismissible"><p><?php echo esc_html($status); ?></p></div>
+            <?php endif; ?>
+
             <div class="hmsc-grid">
                 <div class="hmsc-card hmsc-card-wide">
                     <h2>Destek Talebi Oluştur</h2>
 
                     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                        <input type="hidden" name="action" value="<?php echo esc_attr(self::ACTION); ?>">
+                        <input type="hidden" name="action" value="<?php echo esc_attr(self::ACTION_SUBMIT); ?>">
                         <?php wp_nonce_field('hmsc_ticket_nonce', 'hmsc_ticket_nonce_field'); ?>
 
                         <table class="form-table" role="presentation">
@@ -92,7 +94,7 @@ class HMSC_Form {
                         <p><strong>Pazartesi–Cumartesi 09:00–18:00</strong> arası taleplerinize e-posta ile dönüş yapılacaktır.</p>
                         <p>Lütfen ulaşabildiğiniz bir e-posta adresi yazın.</p>
                         <p>Çok acil durumlarda WhatsApp hattımıza ulaşın:
-                            <a href="<?php echo esc_url(self::WHATSAPP_LINK); ?>" target="_blank" rel="noopener noreferrer">
+                            <a href="https://wa.me/905309138778" target="_blank" rel="noopener noreferrer">
                                 wa.me/905309138778
                             </a>
                         </p>
@@ -101,15 +103,40 @@ class HMSC_Form {
                 </div>
 
                 <div class="hmsc-card">
-                    <h2>Acil WhatsApp</h2>
+                    <h2>Bağlantı Durumu</h2>
+                    <?php self::render_status(); ?>
+
+                    <h2 style="margin-top:24px;">Acil WhatsApp</h2>
                     <p>Acil durumlarda WhatsApp üzerinden bizimle iletişime geçin.</p>
                     <a class="button button-primary button-hero" style="width:100%; text-align:center;"
-                       href="<?php echo esc_url(self::WHATSAPP_LINK); ?>" target="_blank" rel="noopener noreferrer">
+                       href="https://wa.me/905309138778" target="_blank" rel="noopener noreferrer">
                         WhatsApp Acil Destek
                     </a>
                 </div>
             </div>
         </div>
+        <?php
+    }
+
+    private static function render_status() {
+        $settings = HMSC_Settings::get();
+        $configured = HMSC_Settings::is_configured();
+        $provisioned = HMSC_Settings::is_provisioned();
+        ?>
+        <p>
+            <?php if ($provisioned): ?>
+                <span class="dashicons dashicons-yes" style="color:green"></span> Site Hub’a kayıtlı.
+            <?php elseif ($configured): ?>
+                <span class="dashicons dashicons-yes-alt" style="color:#46b450"></span> Hub bilgileri girildi, kayıt bekleniyor.
+            <?php else: ?>
+                <span class="dashicons dashicons-warning" style="color:#dba617"></span> Hub ayarları eksik.
+            <?php endif; ?>
+        </p>
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <input type="hidden" name="action" value="<?php echo esc_attr(self::ACTION_TEST); ?>">
+            <?php wp_nonce_field('hmsc_test_nonce', 'hmsc_test_nonce_field'); ?>
+            <?php submit_button('Bağlantıyı Test Et', 'secondary', ''); ?>
+        </form>
         <?php
     }
 
@@ -133,67 +160,68 @@ class HMSC_Form {
         }
 
         $settings = HMSC_Settings::get();
-        if (empty($settings['hub_url']) || empty($settings['site_id']) || empty($settings['api_key'])) {
+        if (empty($settings['hub_url']) || (empty($settings['site_id']) && empty($settings['shared_api_key']))) {
             self::redirect_error('Hub ayarları eksik. Lütfen önce Ayarlar bölümünü yapılandırın.');
         }
 
-        $endpoint = rtrim($settings['hub_url'], '/') . '/wp-json/hmsh/v1/tickets';
-
-        $user = wp_get_current_user();
-
-        $payload = array(
-            'client_site_url'  => home_url('/'),
-            'client_site_name' => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
-
-            'customer_email'   => $email,
-            'customer_phone'   => $phone,
-
-            'urgency'          => $urgency,
-            'subject'          => $subject,
-            'message'          => $message,
-
-            'submitted_by'     => $user ? $user->display_name : '',
-            'submitted_by_email' => $user ? $user->user_email : '',
-        );
-
-        $args = array(
-            'timeout' => 15,
-            'headers' => array(
-                'Content-Type' => 'application/json; charset=utf-8',
-                'X-HM-Site'    => $settings['site_id'],
-                'X-HM-Key'     => $settings['api_key'],
-            ),
-            'body' => wp_json_encode($payload),
-        );
-
-        $res = wp_remote_post($endpoint, $args);
+        $res = HMSC_Hub::send_ticket(array(
+            'customer_email' => $email,
+            'customer_phone' => $phone,
+            'urgency'        => $urgency,
+            'subject'        => $subject,
+            'message'        => $message,
+        ));
 
         if (is_wp_error($res)) {
             self::redirect_error('Hub’a ulaşılamadı: ' . $res->get_error_message());
-        }
-
-        $code = (int) wp_remote_retrieve_response_code($res);
-        $body = wp_remote_retrieve_body($res);
-
-        if ($code < 200 || $code >= 300) {
-            $msg = 'Hub isteği reddetti.';
-            if (!empty($body)) {
-                $decoded = json_decode($body, true);
-                if (is_array($decoded) && !empty($decoded['message'])) {
-                    $msg .= ' ' . sanitize_text_field($decoded['message']);
-                }
-            }
-            self::redirect_error($msg);
         }
 
         wp_safe_redirect(add_query_arg(array('page' => 'hm-support', 'hmsc_sent' => '1'), admin_url('admin.php')));
         exit;
     }
 
+    public static function handle_test() {
+        if (!current_user_can(self::CAP)) {
+            wp_die('İzin verilmedi.');
+        }
+
+        if (!isset($_POST['hmsc_test_nonce_field']) || !wp_verify_nonce($_POST['hmsc_test_nonce_field'], 'hmsc_test_nonce')) {
+            self::redirect_error('Güvenlik kontrolü başarısız oldu.');
+        }
+
+        $res = HMSC_Hub::test_connection();
+        if (is_wp_error($res)) {
+            self::redirect_status('Hub bağlantı testi başarısız: ' . $res->get_error_message());
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($res);
+        if ($code >= 200 && $code < 300) {
+            self::redirect_status('Hub bağlantısı başarılı.');
+        } else {
+            $body = wp_remote_retrieve_body($res);
+            $msg = 'Hub bağlantı testi başarısız.';
+            if (!empty($body)) {
+                $decoded = json_decode($body, true);
+                if (is_array($decoded) && !empty($decoded['message'])) {
+                    $msg .= ' ' . sanitize_text_field($decoded['message']);
+                }
+            }
+            self::redirect_status($msg);
+        }
+    }
+
     private static function redirect_error($msg) {
         wp_safe_redirect(add_query_arg(array(
             'page' => 'hm-support',
             'hmsc_error' => rawurlencode($msg),
+        ), admin_url('admin.php')));
+        exit;
+    }
+
+    private static function redirect_status($msg) {
+        wp_safe_redirect(add_query_arg(array(
+            'page' => 'hm-support',
+            'hmsc_status' => rawurlencode($msg),
         ), admin_url('admin.php')));
         exit;
     }

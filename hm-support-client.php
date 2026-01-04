@@ -1,20 +1,26 @@
 <?php
 /**
  * Plugin Name: HM Support Client
- * Description: Adds a Shop Manager support form to send tickets to HM Support Hub.
- * Version: 1.0.0
- * Author: Hızlı Mağaza Pro
- * Text Domain: hm-support-client
+ * Description: Müşteri sitelerinde mağaza yöneticisi için destek formu; talepleri Hub'a iletir.
+ * Version: 0.2.0
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('HMSC_VERSION', '1.0.0');
+define('HMSC_VERSION', '0.2.0');
 define('HMSC_PATH', plugin_dir_path(__FILE__));
 define('HMSC_URL', plugin_dir_url(__FILE__));
 
-require_once HMSC_PATH . 'includes/class-hmsc-plugin.php';
+require_once HMSC_PATH . 'includes/class-hmsc-settings.php';
+require_once HMSC_PATH . 'includes/class-hmsc-hub.php';
+require_once HMSC_PATH . 'includes/class-hmsc-admin.php';
+require_once HMSC_PATH . 'includes/class-hmsc-support-page.php';
 
-add_action('plugins_loaded', function () {
-    HMSC_Plugin::instance();
+add_action('plugins_loaded', function() {
+    HMSC_Settings::init();
+    HMSC_Admin::init();
+    HMSC_Support_Page::init();
+
+    // Otomatik provision (admin tarafında login olunca tetiklenir)
+    add_action('admin_init', array('HMSC_Hub', 'maybe_provision'));
 });
