@@ -1,6 +1,5 @@
 <?php
 if (!defined('ABSPATH')) exit;
-
 class HMSC_Admin {
     const CAP = 'manage_woocommerce';
 
@@ -48,7 +47,7 @@ class HMSC_Admin {
         if (!current_user_can(self::CAP) || !self::allow_user()) {
             wp_die('Bu sayfaya erişim izniniz yok.');
         }
-        HMSC_Form::render();
+        HMSC_Support_Page::render();
     }
 
     public static function render_settings_page() {
@@ -56,7 +55,7 @@ class HMSC_Admin {
             wp_die('Bu sayfaya erişim izniniz yok.');
         }
 
-        $s = HMSC_Settings::get_settings();
+        $s = HMSC_Settings::get();
         ?>
         <div class="wrap hmsc-wrap">
             <h1>HM Destek Ayarları</h1>
@@ -96,14 +95,35 @@ class HMSC_Admin {
                                 <p class="description">Bu değeri gizli tutun. Hub, istekleri doğrulamak için kullanır.</p>
                             </td>
                         </tr>
+
+                        <tr>
+                            <th scope="row"><label for="hmsc_shared_api_key">Paylaşılan API Anahtarı</label></th>
+                            <td>
+                                <input type="text" id="hmsc_shared_api_key" name="<?php echo esc_attr(HMSC_Settings::OPTION_KEY); ?>[shared_api_key]"
+                                       value="<?php echo esc_attr($s['shared_api_key']); ?>" class="regular-text" placeholder="Opsiyonel">
+                                <p class="description">Site bazlı anahtar yoksa bu anahtar kullanılacaktır.</p>
+                            </td>
+                        </tr>
                     </table>
 
                     <?php submit_button('Ayarları Kaydet'); ?>
                 </div>
 
                 <div class="hmsc-card">
-                    <h2>Notlar</h2>
-                    <p>Bu eklenti yalnızca talepleri Hub’a iletir ve Mağaza Yöneticisi için bir destek formu gösterir.</p>
+                    <h2>Bağlantı Durumu</h2>
+                    <p>
+                        <?php if (HMSC_Settings::is_provisioned()): ?>
+                            <span class="dashicons dashicons-yes" style="color:green"></span> Site Hub’a kayıtlı.
+                        <?php else: ?>
+                            <span class="dashicons dashicons-warning" style="color:#dba617"></span> Site kimliği / anahtar eksik. Admin paneline girince otomatik kayıt denenir.
+                        <?php endif; ?>
+                    </p>
+                    <p>Hub bağlantısını test etmek için aşağıdaki butona tıklayın.</p>
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                        <input type="hidden" name="action" value="<?php echo esc_attr(HMSC_Support_Page::ACTION_TEST); ?>">
+                        <?php wp_nonce_field('hmsc_test_nonce', 'hmsc_test_nonce_field'); ?>
+                        <?php submit_button('Bağlantıyı Test Et', 'secondary', ''); ?>
+                    </form>
                 </div>
             </form>
         </div>
