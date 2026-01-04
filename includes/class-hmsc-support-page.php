@@ -190,26 +190,19 @@ class HMSC_Support_Page {
         }
 
         $res = HMSC_Hub::test_connection();
+
         if (is_wp_error($res)) {
             self::redirect_status('Hub bağlantı testi başarısız: ' . $res->get_error_message());
         }
 
-        $code = (int) wp_remote_retrieve_response_code($res);
-        $ok_codes = array_merge(range(200, 299), array(401, 403, 405));
-
-        if (in_array($code, $ok_codes, true)) {
-            self::redirect_status('Hub bağlantısı başarılı.');
-        } else {
-            $body = wp_remote_retrieve_body($res);
-            $msg = 'Hub bağlantı testi başarısız.';
-            if (!empty($body)) {
-                $decoded = json_decode($body, true);
-                if (is_array($decoded) && !empty($decoded['message'])) {
-                    $msg .= ' ' . sanitize_text_field($decoded['message']);
-                }
-            }
-            self::redirect_status($msg);
+        // NEW: test_connection artık array döndürüyor
+        if (is_array($res) && !empty($res['ok'])) {
+            $code = isset($res['http_code']) ? (int) $res['http_code'] : 200;
+            self::redirect_status('Hub bağlantı testi başarılı. (HTTP ' . $code . ')');
         }
+
+        // Eğer beklenmeyen bir şey dönerse:
+        self::redirect_status('Hub bağlantı testi başarısız (beklenmeyen yanıt).');
     }
 
     private static function redirect_error($msg) {
