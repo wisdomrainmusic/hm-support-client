@@ -10,8 +10,8 @@ class HMSC_Admin {
 
     public static function menu() {
         add_menu_page(
-            'HM Support',
-            'HM Support',
+            'HM Destek',
+            'HM Destek',
             self::CAP,
             'hm-support',
             array(__CLASS__, 'render_support_page'),
@@ -21,8 +21,8 @@ class HMSC_Admin {
 
         add_submenu_page(
             'hm-support',
-            'Support Form',
-            'Support Form',
+            'Destek Formu',
+            'Destek Formu',
             self::CAP,
             'hm-support',
             array(__CLASS__, 'render_support_page')
@@ -30,8 +30,8 @@ class HMSC_Admin {
 
         add_submenu_page(
             'hm-support',
-            'Settings',
-            'Settings',
+            'Ayarlar',
+            'Ayarlar',
             self::CAP,
             'hm-support-settings',
             array(__CLASS__, 'render_settings_page')
@@ -46,20 +46,20 @@ class HMSC_Admin {
 
     public static function render_support_page() {
         if (!current_user_can(self::CAP) || !self::allow_user()) {
-            wp_die('You do not have permission to access this page.');
+            wp_die('Bu sayfaya erişim izniniz yok.');
         }
         HMSC_Form::render();
     }
 
     public static function render_settings_page() {
         if (!current_user_can(self::CAP) || !self::allow_user()) {
-            wp_die('You do not have permission to access this page.');
+            wp_die('Bu sayfaya erişim izniniz yok.');
         }
 
         $s = HMSC_Settings::get_settings();
         ?>
         <div class="wrap hmsc-wrap">
-            <h1>HM Support Settings</h1>
+            <h1>HM Destek Ayarları</h1>
 
             <form method="post" action="options.php">
                 <?php
@@ -67,7 +67,7 @@ class HMSC_Admin {
                 ?>
 
                 <div class="hmsc-card">
-                    <h2>Hub Connection</h2>
+                    <h2>Hub Bağlantısı</h2>
 
                     <table class="form-table" role="presentation">
                         <tr>
@@ -75,35 +75,35 @@ class HMSC_Admin {
                             <td>
                                 <input type="url" id="hmsc_hub_url" name="<?php echo esc_attr(HMSC_Settings::OPTION_KEY); ?>[hub_url]"
                                        value="<?php echo esc_attr($s['hub_url']); ?>" class="regular-text" required>
-                                <p class="description">Example: https://hizlimagazapro.com</p>
+                                <p class="description">Örnek: https://hizlimagazapro.com</p>
                             </td>
                         </tr>
 
                         <tr>
-                            <th scope="row"><label for="hmsc_site_id">Site ID</label></th>
+                            <th scope="row"><label for="hmsc_site_id">Site Kimliği</label></th>
                             <td>
                                 <input type="text" id="hmsc_site_id" name="<?php echo esc_attr(HMSC_Settings::OPTION_KEY); ?>[site_id]"
                                        value="<?php echo esc_attr($s['site_id']); ?>" class="regular-text" placeholder="HMZP-1001" required>
-                                <p class="description">This identifies the client site inside the Hub.</p>
+                                <p class="description">Bu değer, müşteri sitesini Hub içinde tanımlar.</p>
                             </td>
                         </tr>
 
                         <tr>
-                            <th scope="row"><label for="hmsc_api_key">API Key</label></th>
+                            <th scope="row"><label for="hmsc_api_key">API Anahtarı</label></th>
                             <td>
                                 <input type="text" id="hmsc_api_key" name="<?php echo esc_attr(HMSC_Settings::OPTION_KEY); ?>[api_key]"
-                                       value="<?php echo esc_attr($s['api_key']); ?>" class="regular-text" placeholder="Paste your key" required>
-                                <p class="description">Keep this secret. The Hub uses it to authenticate requests.</p>
+                                       value="<?php echo esc_attr($s['api_key']); ?>" class="regular-text" placeholder="Anahtarınızı yapıştırın" required>
+                                <p class="description">Bu değeri gizli tutun. Hub, istekleri doğrulamak için kullanır.</p>
                             </td>
                         </tr>
                     </table>
 
-                    <?php submit_button('Save Settings'); ?>
+                    <?php submit_button('Ayarları Kaydet'); ?>
                 </div>
 
                 <div class="hmsc-card">
-                    <h2>Notes</h2>
-                    <p>This plugin only sends tickets to your Hub and shows a support form for Shop Manager.</p>
+                    <h2>Notlar</h2>
+                    <p>Bu eklenti yalnızca talepleri Hub’a iletir ve Mağaza Yöneticisi için bir destek formu gösterir.</p>
                 </div>
             </form>
         </div>

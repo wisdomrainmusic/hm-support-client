@@ -23,10 +23,10 @@ class HMSC_Form {
 
         ?>
         <div class="wrap hmsc-wrap">
-            <h1>HM Support</h1>
+            <h1>HM Destek</h1>
 
             <?php if ($success): ?>
-                <div class="notice notice-success is-dismissible"><p>Ticket sent successfully.</p></div>
+                <div class="notice notice-success is-dismissible"><p>Talep başarıyla gönderildi.</p></div>
             <?php endif; ?>
 
             <?php if (!empty($error)): ?>
@@ -35,7 +35,7 @@ class HMSC_Form {
 
             <div class="hmsc-grid">
                 <div class="hmsc-card hmsc-card-wide">
-                    <h2>Create a Support Ticket</h2>
+                    <h2>Destek Talebi Oluştur</h2>
 
                     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                         <input type="hidden" name="action" value="<?php echo esc_attr(self::ACTION); ?>">
@@ -43,49 +43,49 @@ class HMSC_Form {
 
                         <table class="form-table" role="presentation">
                             <tr>
-                                <th scope="row"><label for="hmsc_email">Your Email</label></th>
+                                <th scope="row"><label for="hmsc_email">E-Posta Adresiniz</label></th>
                                 <td>
                                     <input type="email" id="hmsc_email" name="hmsc_email" class="regular-text"
                                            value="<?php echo esc_attr($default_email); ?>" required>
-                                    <p class="description">Please enter an email address you can access.</p>
+                                    <p class="description">Lütfen erişebildiğiniz bir e-posta adresi girin.</p>
                                 </td>
                             </tr>
 
                             <tr>
-                                <th scope="row"><label for="hmsc_urgency">Urgency</label></th>
+                                <th scope="row"><label for="hmsc_urgency">Aciliyet</label></th>
                                 <td>
                                     <select id="hmsc_urgency" name="hmsc_urgency" required>
-                                        <option value="Low">Low</option>
+                                        <option value="Low">Düşük</option>
                                         <option value="Normal" selected>Normal</option>
-                                        <option value="High">High</option>
-                                        <option value="Critical">Critical</option>
+                                        <option value="High">Yüksek</option>
+                                        <option value="Critical">Kritik</option>
                                     </select>
                                 </td>
                             </tr>
 
                             <tr>
-                                <th scope="row"><label for="hmsc_subject">Subject</label></th>
+                                <th scope="row"><label for="hmsc_subject">Konu</label></th>
                                 <td>
                                     <input type="text" id="hmsc_subject" name="hmsc_subject" class="regular-text" maxlength="140" required>
                                 </td>
                             </tr>
 
                             <tr>
-                                <th scope="row"><label for="hmsc_message">Message</label></th>
+                                <th scope="row"><label for="hmsc_message">Mesaj</label></th>
                                 <td>
                                     <textarea id="hmsc_message" name="hmsc_message" rows="8" class="large-text" required></textarea>
                                 </td>
                             </tr>
 
                             <tr>
-                                <th scope="row"><label for="hmsc_phone">Phone (optional)</label></th>
+                                <th scope="row"><label for="hmsc_phone">Telefon (isteğe bağlı)</label></th>
                                 <td>
                                     <input type="text" id="hmsc_phone" name="hmsc_phone" class="regular-text" maxlength="40" placeholder="+90 ...">
                                 </td>
                             </tr>
                         </table>
 
-                        <?php submit_button('Send Ticket'); ?>
+                        <?php submit_button('Talebi Gönder'); ?>
                     </form>
 
                     <div class="hmsc-note">
@@ -101,11 +101,11 @@ class HMSC_Form {
                 </div>
 
                 <div class="hmsc-card">
-                    <h2>Urgent WhatsApp</h2>
-                    <p>If this is urgent, contact us via WhatsApp.</p>
+                    <h2>Acil WhatsApp</h2>
+                    <p>Acil durumlarda WhatsApp üzerinden bizimle iletişime geçin.</p>
                     <a class="button button-primary button-hero" style="width:100%; text-align:center;"
                        href="<?php echo esc_url(self::WHATSAPP_LINK); ?>" target="_blank" rel="noopener noreferrer">
-                        WhatsApp Urgent Support
+                        WhatsApp Acil Destek
                     </a>
                 </div>
             </div>
@@ -115,11 +115,11 @@ class HMSC_Form {
 
     public static function handle_submit() {
         if (!current_user_can(self::CAP)) {
-            wp_die('Not allowed.');
+            wp_die('İzin verilmedi.');
         }
 
         if (!isset($_POST['hmsc_ticket_nonce_field']) || !wp_verify_nonce($_POST['hmsc_ticket_nonce_field'], 'hmsc_ticket_nonce')) {
-            self::redirect_error('Security check failed.');
+            self::redirect_error('Güvenlik kontrolü başarısız oldu.');
         }
 
         $email   = isset($_POST['hmsc_email']) ? sanitize_email($_POST['hmsc_email']) : '';
@@ -129,12 +129,12 @@ class HMSC_Form {
         $phone   = isset($_POST['hmsc_phone']) ? sanitize_text_field($_POST['hmsc_phone']) : '';
 
         if (empty($email) || empty($subject) || empty($message)) {
-            self::redirect_error('Please fill in Email, Subject, and Message.');
+            self::redirect_error('Lütfen E-posta, Konu ve Mesaj alanlarını doldurun.');
         }
 
         $settings = HMSC_Settings::get_settings();
         if (empty($settings['hub_url']) || empty($settings['site_id']) || empty($settings['api_key'])) {
-            self::redirect_error('Hub settings are missing. Please configure Settings first.');
+            self::redirect_error('Hub ayarları eksik. Lütfen önce Ayarlar bölümünü yapılandırın.');
         }
 
         $endpoint = rtrim($settings['hub_url'], '/') . '/wp-json/hmsh/v1/tickets';
@@ -169,14 +169,14 @@ class HMSC_Form {
         $res = wp_remote_post($endpoint, $args);
 
         if (is_wp_error($res)) {
-            self::redirect_error('Could not reach Hub: ' . $res->get_error_message());
+            self::redirect_error('Hub’a ulaşılamadı: ' . $res->get_error_message());
         }
 
         $code = (int) wp_remote_retrieve_response_code($res);
         $body = wp_remote_retrieve_body($res);
 
         if ($code < 200 || $code >= 300) {
-            $msg = 'Hub rejected the request.';
+            $msg = 'Hub isteği reddetti.';
             if (!empty($body)) {
                 $decoded = json_decode($body, true);
                 if (is_array($decoded) && !empty($decoded['message'])) {
