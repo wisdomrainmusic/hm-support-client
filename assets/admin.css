@@ -1,0 +1,24 @@
+.hmsc-wrap .hmsc-grid{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  margin-top:16px;
+}
+.hmsc-card{
+  background:#fff;
+  border:1px solid #dcdcde;
+  border-radius:10px;
+  padding:16px;
+  min-width:320px;
+}
+.hmsc-card-wide{
+  flex:1;
+  min-width:420px;
+}
+.hmsc-note{
+  margin-top:14px;
+  padding:12px;
+  background:#f6f7f7;
+  border:1px solid #e2e4e7;
+  border-radius:8px;
+}
