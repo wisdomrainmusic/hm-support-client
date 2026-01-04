@@ -3,6 +3,17 @@ if (!defined('ABSPATH')) exit;
 
 class HMSC_Hub {
 
+    public static function get_hub_url() {
+        $opt = get_option('hmsc_settings', array());
+        $url = '';
+
+        if (is_array($opt) && !empty($opt['hub_url'])) {
+            $url = trim((string) $opt['hub_url']);
+        }
+
+        return $url;
+    }
+
     public static function maybe_provision($force = false) {
         if (!is_admin()) return;
         if (!current_user_can('manage_woocommerce') && !current_user_can('shop_manager') && !current_user_can('manage_options')) {
@@ -158,7 +169,12 @@ class HMSC_Hub {
     }
 
     public static function test_connection() {
-        $url = rtrim($this->hub_url, '/') . '/wp-json/hmsh/v1/ping';
+        $hub_url = self::get_hub_url();
+        if (empty($hub_url)) {
+            return new WP_Error('hmsc_no_hub_url', 'Hub URL is not set.');
+        }
+
+        $url = rtrim($hub_url, '/') . '/wp-json/hmsh/v1/ping';
 
         $args = array(
             'timeout' => 15,
@@ -174,18 +190,17 @@ class HMSC_Hub {
         }
 
         $code = (int) wp_remote_retrieve_response_code($res);
-        $body = wp_remote_retrieve_body($res);
+        $body = (string) wp_remote_retrieve_body($res);
 
         $json = null;
-        if (!empty($body)) {
+        if ($body !== '') {
             $json = json_decode($body, true);
         }
 
-        // success: any 2xx + ok/success truthy
         $ok = ($code >= 200 && $code < 300) && is_array($json) && (!empty($json['ok']) || !empty($json['success']));
 
         if (!$ok) {
-            $snippet = is_string($body) ? substr(trim($body), 0, 300) : '';
+            $snippet = substr(trim($body), 0, 300);
             return new WP_Error(
                 'hmsc_test_failed',
                 'Hub ping failed.',
@@ -202,6 +217,7 @@ class HMSC_Hub {
             'ok' => true,
             'http_code' => $code,
             'response' => $json,
+            'url' => $url,
         );
     }
 }
