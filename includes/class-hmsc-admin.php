@@ -5,6 +5,7 @@ class HMSC_Admin {
 
     public static function init() {
         add_action('admin_menu', array(__CLASS__, 'menu'));
+        add_action('admin_post_hmsc_reprovision', array(__CLASS__, 'handle_reprovision'));
     }
 
     public static function menu() {
@@ -63,6 +64,7 @@ class HMSC_Admin {
             <form method="post" action="options.php">
                 <?php
                 settings_fields('hmsc_settings_group');
+                settings_errors('hmsc_messages');
                 ?>
 
                 <div class="hmsc-card">
@@ -82,8 +84,8 @@ class HMSC_Admin {
                             <th scope="row"><label for="hmsc_site_id">Site Kimliği</label></th>
                             <td>
                                 <input type="text" id="hmsc_site_id" name="<?php echo esc_attr(HMSC_Settings::OPTION_KEY); ?>[site_id]"
-                                       value="<?php echo esc_attr($s['site_id']); ?>" class="regular-text" placeholder="HMZP-1001" required>
-                                <p class="description">Bu değer, müşteri sitesini Hub içinde tanımlar.</p>
+                                       value="<?php echo esc_attr($s['site_id']); ?>" class="regular-text" placeholder="HMZP-1001" readonly>
+                                <p class="description">Bu değer Hub tarafından otomatik atanır. Değiştirmek için “Yeniden Bağlan” kullanın.</p>
                             </td>
                         </tr>
 
@@ -91,8 +93,8 @@ class HMSC_Admin {
                             <th scope="row"><label for="hmsc_api_key">API Anahtarı</label></th>
                             <td>
                                 <input type="text" id="hmsc_api_key" name="<?php echo esc_attr(HMSC_Settings::OPTION_KEY); ?>[api_key]"
-                                       value="<?php echo esc_attr($s['api_key']); ?>" class="regular-text" placeholder="Anahtarınızı yapıştırın" required>
-                                <p class="description">Bu değeri gizli tutun. Hub, istekleri doğrulamak için kullanır.</p>
+                                       value="<?php echo esc_attr($s['api_key']); ?>" class="regular-text" placeholder="Anahtarınızı yapıştırın" readonly>
+                                <p class="description">Bu değer Hub tarafından otomatik atanır.</p>
                             </td>
                         </tr>
 
@@ -125,8 +127,50 @@ class HMSC_Admin {
                         <?php submit_button('Bağlantıyı Test Et', 'secondary', ''); ?>
                     </form>
                 </div>
+
+                <div class="hmsc-card">
+                    <h2>Hub Bağlantısını Yenile</h2>
+                    <p>Site kimliği ve API anahtarı Hub tarafından atanır. Yeniden bağlanmak için aşağıdaki butonu kullanın.</p>
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                        <input type="hidden" name="action" value="hmsc_reprovision" />
+                        <?php wp_nonce_field('hmsc_reprovision'); ?>
+                        <p><button class="button button-secondary">Yeniden Bağlan (Hub’a Tekrar Kayıt)</button></p>
+                    </form>
+                </div>
             </form>
         </div>
         <?php
+    }
+
+    public static function handle_reprovision() {
+        if (!current_user_can(self::CAP) || !self::allow_user()) {
+            wp_die('Bu işlemi yapma izniniz yok.');
+        }
+
+        check_admin_referer('hmsc_reprovision');
+
+        HMSC_Settings::update(array(
+            'site_id'        => '',
+            'api_key'        => '',
+            'provisioned_at' => 0,
+            'last_error'     => '',
+        ));
+
+        HMSC_Hub::maybe_provision(true);
+
+        $updated = HMSC_Settings::get();
+        if (HMSC_Settings::is_provisioned()) {
+            add_settings_error('hmsc_messages', 'hmsc_reprovision_success', 'Hub ile bağlantı yenilendi.', 'updated');
+        } elseif (!empty($updated['last_error'])) {
+            add_settings_error('hmsc_messages', 'hmsc_reprovision_failed', 'Yeniden bağlanılamadı: ' . esc_html($updated['last_error']));
+        } else {
+            add_settings_error('hmsc_messages', 'hmsc_reprovision_pending', 'Yeniden bağlanma denemesi yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.', 'info');
+        }
+
+        // hataları bir sonraki sayfaya taşı
+        set_transient('settings_errors', get_settings_errors('hmsc_messages'), 30);
+
+        wp_safe_redirect(add_query_arg(array('page' => 'hm-support-settings', 'settings-updated' => 'true'), admin_url('admin.php')));
+        exit;
     }
 }
