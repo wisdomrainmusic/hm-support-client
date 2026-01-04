@@ -195,7 +195,9 @@ class HMSC_Support_Page {
         }
 
         $code = (int) wp_remote_retrieve_response_code($res);
-        if ($code >= 200 && $code < 300) {
+        $ok_codes = array_merge(range(200, 299), array(401, 403, 405));
+
+        if (in_array($code, $ok_codes, true)) {
             self::redirect_status('Hub bağlantısı başarılı.');
         } else {
             $body = wp_remote_retrieve_body($res);

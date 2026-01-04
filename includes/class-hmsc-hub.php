@@ -130,7 +130,9 @@ class HMSC_Hub {
         $raw  = wp_remote_retrieve_body($resp);
         $json = json_decode($raw, true);
 
-        if ($code !== 200 || !is_array($json) || empty($json['ok'])) {
+        $ok_flag = is_array($json) && (true === ($json['ok'] ?? null) || true === ($json['success'] ?? null));
+
+        if ($code !== 200 || !is_array($json) || !$ok_flag) {
             $endpoint_path = wp_parse_url($endpoint, PHP_URL_PATH);
             $body_hint = '';
 
@@ -157,7 +159,6 @@ class HMSC_Hub {
         $hub = HMSC_Settings::hub_base_url();
         if (empty($hub)) return new WP_Error('hmsc_no_hub', 'Hub URL boş.');
 
-        $endpoint = $hub . '/wp-json/hmsh/v1/ping';
         $auth_key = !empty($s['api_key']) ? $s['api_key'] : (string)$s['shared_api_key'];
 
         $args = array(
@@ -168,6 +169,56 @@ class HMSC_Hub {
             ),
         );
 
-        return wp_remote_get($endpoint, $args);
+        $checks = array(
+            array(
+                'path'           => '/wp-json/hmsh/v1/ping',
+                'allowed_codes'  => range(200, 299),
+            ),
+            array(
+                'path'           => '/wp-json/hmsh/v1/status',
+                'allowed_codes'  => range(200, 299),
+            ),
+            array(
+                'path'           => '/wp-json/hmsh/v1/tickets',
+                'allowed_codes'  => array_merge(range(200, 299), array(401, 403, 405)),
+            ),
+        );
+
+        $last_response = null;
+
+        foreach ($checks as $check) {
+            $endpoint = $hub . $check['path'];
+            $resp = wp_remote_get($endpoint, $args);
+
+            if (is_wp_error($resp)) {
+                return $resp;
+            }
+
+            $last_response = $resp;
+            $code = (int) wp_remote_retrieve_response_code($resp);
+
+            if ($code === 404) {
+                continue;
+            }
+
+            if (in_array($code, $check['allowed_codes'], true)) {
+                return $resp;
+            }
+
+            $body  = wp_remote_retrieve_body($resp);
+            $msg   = sprintf('Hub bağlantı testi başarısız (HTTP %d).', $code);
+            $decoded = json_decode($body, true);
+            if (is_array($decoded) && !empty($decoded['message'])) {
+                $msg .= ' ' . sanitize_text_field($decoded['message']);
+            }
+
+            return new WP_Error('hmsc_test_failed', $msg);
+        }
+
+        if ($last_response) {
+            return new WP_Error('hmsc_test_failed', 'Hub bağlantı testi başarısız: uygun bir route bulunamadı.');
+        }
+
+        return new WP_Error('hmsc_test_failed', 'Hub bağlantı testi başarısız: yanıt alınamadı.');
     }
 }
