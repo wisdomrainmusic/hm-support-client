@@ -14,8 +14,8 @@ class HMSC_Hub {
         // zaten provision edildi
         if (!empty($s['site_id']) && !empty($s['api_key'])) return;
 
-        // shared_api_key yoksa provision yapamayız (şimdilik)
-        if (empty($s['shared_api_key'])) return;
+        $shared = !empty($s['shared_api_key']) ? $s['shared_api_key'] : (defined('HMSC_DEFAULT_SHARED_KEY') ? HMSC_DEFAULT_SHARED_KEY : '');
+        if (empty($shared)) return;
 
         // spam olmasın: 15 dakikada bir dene
         $last = isset($s['provisioned_at']) ? (int)$s['provisioned_at'] : 0;
@@ -45,10 +45,12 @@ class HMSC_Hub {
 
         $endpoint = $hub . '/wp-json/hmsh/v1/register';
 
+        $shared = !empty($s['shared_api_key']) ? $s['shared_api_key'] : (defined('HMSC_DEFAULT_SHARED_KEY') ? HMSC_DEFAULT_SHARED_KEY : '');
+
         $body = array(
             'site_url'       => home_url('/'),
             'site_name'      => wp_strip_all_tags(get_bloginfo('name')),
-            'shared_api_key' => (string)$s['shared_api_key'],
+            'shared_api_key' => (string)$shared,
         );
 
         $args = array(

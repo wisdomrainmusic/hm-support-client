@@ -11,10 +11,10 @@ class HMSC_Settings {
 
     public static function defaults() {
         return array(
-            'hub_url'        => 'https://hizlimagazapro.com',
+            'hub_url'        => defined('HMSC_DEFAULT_HUB_URL') ? HMSC_DEFAULT_HUB_URL : '',
             'site_id'        => '',
             'api_key'        => '',
-            'shared_api_key' => '',
+            'shared_api_key' => defined('HMSC_DEFAULT_SHARED_KEY') ? HMSC_DEFAULT_SHARED_KEY : '',
             'provisioned_at' => 0,
             'last_error'     => '',
         );
